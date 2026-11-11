@@ -334,7 +334,7 @@ function stampSpots(data: Uint8ClampedArray, pattern: Pattern, random: () => num
   }
 }
 
-function normalsFrom(height: Float32Array): Uint8ClampedArray {
+function normalsFrom(height: Float32Array): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(WIDTH * HEIGHT * 4)
   for (let y = 0; y < HEIGHT; y++) {
     const y0 = (y - 1 + HEIGHT) % HEIGHT
