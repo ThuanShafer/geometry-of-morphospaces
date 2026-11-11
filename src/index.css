@@ -493,10 +493,11 @@ h2 em,
   max-width: 36em;
   padding-top: 10px;
   border-top: 1px solid var(--line);
-  font-family: var(--serif);
-  font-size: 16.5px;
-  line-height: 1.4;
-  color: var(--ink);
+  font-family: inherit;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #e4eaf0;
 }
 
 .fact-link {

@@ -61,6 +61,14 @@ function frameFor(width: number, height: number): Frame {
   return WIDE
 }
 
+const MOBILE_SPIN = 0.2
+const DESKTOP_SPIN = 0.12
+
+const CUBE_CAMERA: Vec3 = [1.35, 1.05, 7.8]
+const CUBE_TARGET: Vec3 = [0, 0.05, 0]
+const SHELL_CAMERA: Vec3 = [1.15, 0.62, 4.4]
+const SHELL_TARGET: Vec3 = [0, -0.12, 0]
+
 export function Scene({
   params,
   found,
@@ -76,7 +84,71 @@ export function Scene({
   onCommit: () => void
   viewReset: number
 }) {
+  const narrow = useNarrowScreen()
   const callouts = useRef<SVGSVGElement>(null)
+  if (narrow) {
+    return (
+      <>
+        <Canvas
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '64%', touchAction: 'none' }}
+          camera={{ position: CUBE_CAMERA, fov: 30, near: 0.1, far: 80 }}
+          dpr={[1, 2]}
+          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.08 }}
+        >
+          <color attach="background" args={['#081016']} />
+          <fog attach="fog" args={['#081016', 18, 36]} />
+          <Lights />
+          <Studio />
+          <Morphospace
+            params={params}
+            found={found}
+            onChange={onChange}
+            onCommit={onCommit}
+            position={CUBE_TARGET}
+            scale={0.68}
+          />
+          <OrbitControls
+            makeDefault
+            enableDamping
+            dampingFactor={0.08}
+            enablePan={false}
+            minDistance={2.6}
+            maxDistance={14}
+            minPolarAngle={0.12}
+            maxPolarAngle={Math.PI * 0.92}
+            rotateSpeed={0.95}
+            zoomSpeed={0.65}
+            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+            target={CUBE_TARGET}
+          />
+          <FixedCamera position={CUBE_CAMERA} target={CUBE_TARGET} viewReset={viewReset} />
+        </Canvas>
+        <Canvas
+          style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: '44%', pointerEvents: 'none', touchAction: 'none' }}
+          camera={{ position: SHELL_CAMERA, fov: 30, near: 0.1, far: 40 }}
+          dpr={[1, 1.5]}
+          gl={{ alpha: true, antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.08 }}
+          onCreated={({ gl, scene }) => {
+            gl.setClearColor(0x000000, 0)
+            scene.background = null
+          }}
+        >
+          <Lights />
+          <Studio />
+          <ShellStage
+            params={params}
+            pattern={pattern}
+            callouts={callouts}
+            position={SHELL_TARGET}
+            displaySize={1.85}
+            labeled={false}
+            spin={MOBILE_SPIN}
+          />
+          <FixedCamera position={SHELL_CAMERA} target={SHELL_TARGET} viewReset={0} />
+        </Canvas>
+      </>
+    )
+  }
   return (
     <>
     <Canvas
@@ -87,11 +159,7 @@ export function Scene({
     >
       <color attach="background" args={['#081016']} />
       <fog attach="fog" args={['#081016', 18, 36]} />
-      <hemisphereLight args={['#d7e4ee', '#c98462', 0.55]} />
-      <ambientLight intensity={0.18} />
-      <directionalLight position={[5, 6.5, 4]} intensity={2.4} color="#fff6ec" />
-      <directionalLight position={[-5, 2.2, -3]} intensity={0.7} color="#8ec4d4" />
-      <directionalLight position={[1.5, -1.5, 5]} intensity={0.35} color="#f0a56a" />
+      <Lights />
       <Stage
         params={params}
         found={found}
@@ -103,6 +171,18 @@ export function Scene({
       />
     </Canvas>
     <svg ref={callouts} className="callouts" aria-hidden="true" />
+    </>
+  )
+}
+
+function Lights() {
+  return (
+    <>
+      <hemisphereLight args={['#d7e4ee', '#c98462', 0.55]} />
+      <ambientLight intensity={0.18} />
+      <directionalLight position={[5, 6.5, 4]} intensity={2.4} color="#fff6ec" />
+      <directionalLight position={[-5, 2.2, -3]} intensity={0.7} color="#8ec4d4" />
+      <directionalLight position={[1.5, -1.5, 5]} intensity={0.35} color="#f0a56a" />
     </>
   )
 }
@@ -138,6 +218,7 @@ function Stage({
         position={frame.shell}
         displaySize={frame.shellSize}
         labeled={roomy}
+        spin={DESKTOP_SPIN}
       />
       <Ground position={[frame.shell[0], frame.shell[1] - frame.shellSize * 0.52, frame.shell[2]]} />
       <Morphospace
@@ -162,7 +243,7 @@ function Stage({
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         target={frame.target}
       />
-      <CameraHome viewReset={viewReset} />
+      <FixedCamera position={frame.camera} target={frame.target} viewReset={viewReset} />
     </>
   )
 }
@@ -174,6 +255,7 @@ function ShellStage({
   position,
   displaySize,
   labeled: allowLabels,
+  spin,
 }: {
   params: RaupParams
   pattern: string
@@ -182,6 +264,7 @@ function ShellStage({
   displaySize: number
   /** Anatomy labels stay off the small screen. The shell is part of the background. */
   labeled: boolean
+  spin: number
 }) {
   const group = useRef<THREE.Group>(null)
   const reduced = useReducedMotion()
@@ -194,8 +277,9 @@ function ShellStage({
     setPinned(false)
   }, [pattern])
   useFrame((_, delta) => {
-    if (reduced || hover || pinned || !group.current) return
-    group.current.rotation.y += delta * 0.12
+    if (reduced || !group.current) return
+    if (allowLabels && (hover || pinned)) return
+    group.current.rotation.y += delta * spin
   })
   return (
     <group ref={group} position={position} rotation={[0.28, -1.05, 0]}>
@@ -266,20 +350,31 @@ function Ground({ position }: { position: Vec3 }) {
   )
 }
 
-function CameraHome({ viewReset }: { viewReset: number }) {
+function FixedCamera({ position, target, viewReset }: { position: Vec3; target: Vec3; viewReset: number }) {
   const camera = useThree((state) => state.camera)
-  const width = useThree((state) => state.size.width)
-  const height = useThree((state) => state.size.height)
   const controls = useThree((state) => state.controls) as { target: THREE.Vector3; update: () => void } | null
-  const frame = frameFor(width, height)
   useEffect(() => {
-    camera.position.set(...frame.camera)
+    camera.position.set(...position)
+    camera.lookAt(...target)
     if (controls) {
-      controls.target.set(...frame.target)
+      controls.target.set(...target)
       controls.update()
     }
-  }, [camera, controls, frame, viewReset])
+  }, [camera, controls, position, target, viewReset])
   return null
+}
+
+function useNarrowScreen() {
+  const query = '(max-width: 800px), (max-height: 560px)'
+  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const apply = () => setNarrow(media.matches)
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [])
+  return narrow
 }
 
 function useReducedMotion() {

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { RaupParams } from '../model/raup.ts'
 import { TaxonDialog } from './TaxonDialog.tsx'
 import { noteFor } from '../model/notes.ts'
@@ -116,12 +116,12 @@ export function Panel({
           />
         </div>
 
-        <p className="gesture">Drag to turn the view. Drag the bright point in the cube.</p>
+        <p className="gesture">Drag to turn the cube. Drag the bright point inside it.</p>
 
         <div className="sheet-extra">
         <p className="how how-pointer">Drag the point in the cube, or turn the shell. The sliders are the same three axes.</p>
         <p className="how how-touch">
-          Drag the bright point in the cube. Drag to turn the view, and pinch to zoom.
+          Drag the bright point in the cube. Drag to turn the cube, and pinch to zoom.
         </p>
         {hit && (
           <div className="sheet-creature">
@@ -252,16 +252,35 @@ export function Panel({
 }
 
 function Fact({ id, binomial }: { id: string; binomial: string }) {
+  const narrow = useNarrowScreen()
   const [open, setOpen] = useState(false)
   return (
     <p className="fact">
-      {noteFor(id).fact}{' '}
-      <button type="button" className="fact-link" onClick={() => setOpen(true)}>
-        Read more
-      </button>
-      {open && <TaxonDialog specimenId={id} binomial={binomial} onClose={() => setOpen(false)} />}
+      {noteFor(id).fact}
+      {!narrow && (
+        <>
+          {' '}
+          <button type="button" className="fact-link" onClick={() => setOpen(true)}>
+            Read more
+          </button>
+          {open && <TaxonDialog specimenId={id} binomial={binomial} onClose={() => setOpen(false)} />}
+        </>
+      )}
     </p>
   )
+}
+
+function useNarrowScreen() {
+  const query = '(max-width: 800px), (max-height: 560px)'
+  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const apply = () => setNarrow(media.matches)
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [])
+  return narrow
 }
 
 function Parameter({

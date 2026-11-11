@@ -4,7 +4,7 @@ import { Scene } from './components/Scene.tsx'
 import type { RaupParams } from './model/raup.ts'
 import { FOUND_KEY, SPECIMENS, matchSpecimen, nearestSpecimen } from './model/specimens.ts'
 
-const START = SPECIMENS[0].params
+const START = (SPECIMENS.find((specimen) => specimen.id === 'melanoides') ?? SPECIMENS[0]).params
 
 function loadFound(): string[] {
   try {
