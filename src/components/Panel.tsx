@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { RaupParams } from '../model/raup.ts'
-import { inaturalistUrl } from '../model/inaturalist.ts'
+import { TaxonDialog } from './TaxonDialog.tsx'
 import { noteFor } from '../model/notes.ts'
 import { SPECIMENS, specimenById, type Specimen } from '../model/specimens.ts'
 import {
@@ -45,30 +45,30 @@ export function Panel({
 
   return (
     <div className="hud">
-      <aside className={details ? 'panel is-open' : 'panel'}>
-        <div className="sheet-head">
-          <div>
-            <p className="kicker">Raup · 1966</p>
-            <h1>
-              Every shell
-              <br />
-              is the same shell.
-            </h1>
-          </div>
-          <div className="sheet-actions">
-            <button type="button" className="text-button" onClick={onResetView}>
-              Reset view
-            </button>
-            <button
-              type="button"
-              className="text-button sheet-toggle"
-              aria-expanded={details}
-              onClick={() => setDetails((open) => !open)}
-            >
-              {details ? 'Close' : 'Details'}
-            </button>
-          </div>
+      <div className="sheet-head">
+        <div>
+          <p className="kicker">Raup · 1966</p>
+          <h1>
+            Every shell
+            <br />
+            is the same shell.
+          </h1>
         </div>
+        <div className="sheet-actions">
+          <button type="button" className="text-button" onClick={onResetView}>
+            Reset view
+          </button>
+          <button
+            type="button"
+            className="text-button sheet-toggle"
+            aria-expanded={details}
+            onClick={() => setDetails((open) => !open)}
+          >
+            {details ? 'Close' : 'Details'}
+          </button>
+        </div>
+      </div>
+      <aside className={details ? 'panel is-open' : 'panel'}>
         <p className="rule">A tube that grows only at its mouth. Three numbers decide the form.</p>
 
         <div className="params">
@@ -76,6 +76,7 @@ export function Panel({
             symbol="W"
             name="whorl expansion"
             hint="How much the tube widens in one full turn."
+            about="How many times wider the tube becomes in one full turn. Close to 1, the coil stays narrow through many turns. A very large value flares in less than a turn, which is how a clam valve sits in this model."
             value={params.W}
             format={formatWInput}
             slider={wToSlider(params.W)}
@@ -89,6 +90,7 @@ export function Panel({
             symbol="D"
             name="distance from axis"
             hint="0 touches the axis. Toward 1, the turns leave a hole."
+            about="How far the tube sits from the coiling axis: the inner radius divided by the outer radius. At 0 the inner margin touches the axis. Toward 1 the turns leave a hole, the umbilicus."
             value={params.D}
             format={formatFixed}
             slider={linearToSlider(params.D, D_MIN, D_MAX)}
@@ -102,6 +104,7 @@ export function Panel({
             symbol="T"
             name="translation"
             hint="0 stays flat. Larger values build a tower."
+            about="How far the aperture moves along the axis in one turn. At 0 the coil is flat, as in a nautilus. Larger values drop each whorl and stack them into a tower."
             value={params.T}
             format={formatFixed}
             slider={linearToSlider(params.T, T_MIN, T_MAX)}
@@ -113,12 +116,12 @@ export function Panel({
           />
         </div>
 
-        <p className="gesture">Drag the shell to turn it. Drag the point in the cube. Tap the shell for labels.</p>
+        <p className="gesture">Drag to turn the view. Drag the bright point in the cube.</p>
 
         <div className="sheet-extra">
         <p className="how how-pointer">Drag the point in the cube, or turn the shell. The sliders are the same three axes.</p>
         <p className="how how-touch">
-          Drag the bright point in the cube. Drag the shell to turn it, pinch to zoom, and tap it to pin the labels.
+          Drag the bright point in the cube. Drag to turn the view, and pinch to zoom.
         </p>
         {hit && (
           <div className="sheet-creature">
@@ -249,12 +252,14 @@ export function Panel({
 }
 
 function Fact({ id, binomial }: { id: string; binomial: string }) {
+  const [open, setOpen] = useState(false)
   return (
     <p className="fact">
       {noteFor(id).fact}{' '}
-      <a href={inaturalistUrl(id, binomial)} target="_blank" rel="noreferrer">
+      <button type="button" className="fact-link" onClick={() => setOpen(true)}>
         Read more
-      </a>
+      </button>
+      {open && <TaxonDialog specimenId={id} binomial={binomial} onClose={() => setOpen(false)} />}
     </p>
   )
 }
@@ -263,6 +268,7 @@ function Parameter({
   symbol,
   name,
   hint,
+  about,
   value,
   format,
   slider,
@@ -275,6 +281,7 @@ function Parameter({
   symbol: string
   name: string
   hint: string
+  about: string
   value: number
   format: (value: number) => string
   slider: number
@@ -284,15 +291,39 @@ function Parameter({
   onValue: (value: number) => void
   onCommit: () => void
 }) {
+  const fieldId = useId()
+  const noteId = useId()
   const [draft, setDraft] = useState<string | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const shown = draft ?? format(value)
 
   return (
-    <label className="param">
+    <div className="param">
       <span className="param-top">
-        <span className="sym">{symbol}</span>
-        <span className="sym-name">{name}</span>
+        <label className="sym" htmlFor={fieldId}>
+          {symbol}
+        </label>
+        <span className="param-title">
+          <label className="sym-name" htmlFor={fieldId}>
+            {name}
+          </label>
+          <button
+            type="button"
+            className="info-button"
+            aria-expanded={aboutOpen}
+            aria-controls={noteId}
+            aria-label={`What ${symbol} means`}
+            onClick={() => setAboutOpen((open) => !open)}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.5" />
+              <path d="M8 7.15V11.4" />
+              <circle cx="8" cy="4.7" r="0.75" />
+            </svg>
+          </button>
+        </span>
         <input
+          id={fieldId}
           className="num"
           type="text"
           inputMode="decimal"
@@ -333,7 +364,13 @@ function Parameter({
         <span>{minLabel}</span>
         <span>{maxLabel}</span>
       </span>
-      <span className="hint">{hint}</span>
-    </label>
+      {aboutOpen ? (
+        <p id={noteId} className="info-note">
+          {about}
+        </p>
+      ) : (
+        <span className="hint">{hint}</span>
+      )}
+    </div>
   )
 }

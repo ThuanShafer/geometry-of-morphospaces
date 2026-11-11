@@ -38,12 +38,12 @@ const MEDIUM: Frame = {
 }
 
 const PHONE: Frame = {
-  camera: [0, 0.85, 7.6],
-  target: [0, 0.15, 0],
-  shell: [0, -0.2, 0],
-  shellSize: 1.85,
-  cube: [0, 1.2, -0.1],
-  cubeScale: 0.36,
+  camera: [0, 1.05, 8.2],
+  target: [0, 0.55, 0],
+  shell: [0, 0.22, 0.35],
+  shellSize: 1.62,
+  cube: [0, 1.62, -0.3],
+  cubeScale: 0.4,
 }
 
 const PHONE_LAND: Frame = {
@@ -137,6 +137,7 @@ function Stage({
         callouts={callouts}
         position={frame.shell}
         displaySize={frame.shellSize}
+        labeled={roomy}
       />
       <Ground position={[frame.shell[0], frame.shell[1] - frame.shellSize * 0.52, frame.shell[2]]} />
       <Morphospace
@@ -172,12 +173,15 @@ function ShellStage({
   callouts,
   position,
   displaySize,
+  labeled: allowLabels,
 }: {
   params: RaupParams
   pattern: string
   callouts: RefObject<SVGSVGElement | null>
   position: Vec3
   displaySize: number
+  /** Anatomy labels stay off the small screen. The shell is part of the background. */
+  labeled: boolean
 }) {
   const group = useRef<THREE.Group>(null)
   const reduced = useReducedMotion()
@@ -201,8 +205,8 @@ function ShellStage({
         quality="hero"
         pattern={pattern}
         paired={paired}
-        interactive={revealed}
-        labeled={hover || pinned}
+        interactive={allowLabels && revealed}
+        labeled={allowLabels && (hover || pinned)}
         svg={callouts}
         onHover={setHover}
         onTogglePin={() => setPinned((value) => !value)}

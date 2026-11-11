@@ -68,3 +68,87 @@ export function inaturalistUrl(id: string, binomial: string): string {
   if (taxon) return `https://www.inaturalist.org/taxa/${taxon}`
   return `https://www.inaturalist.org/taxa/search?q=${encodeURIComponent(binomial)}`
 }
+
+export type TaxonPage = {
+  id: number
+  name: string
+  commonName: string | null
+  rank: string
+  extinct: boolean
+  observations: number
+  summary: string
+  photoUrl: string | null
+  photoCredit: string | null
+  lineage: string[]
+  pageUrl: string
+}
+
+const LINEAGE = new Set(['kingdom', 'phylum', 'class', 'order', 'family'])
+
+/** The taxa site refuses to be framed, so the popup reads this public record instead. */
+export async function loadTaxon(id: string, binomial: string, signal?: AbortSignal): Promise<TaxonPage | null> {
+  const taxon = TAXON[id]
+  const url = taxon
+    ? `https://api.inaturalist.org/v1/taxa/${taxon}`
+    : `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(binomial)}`
+  const response = await fetch(url, { signal })
+  if (!response.ok) throw new Error(`iNaturalist responded ${response.status}`)
+  const match = pickTaxon(await response.json(), taxon, binomial)
+  return match ? taxonFromApi(match, inaturalistUrl(id, binomial)) : null
+}
+
+export function taxonFromApi(value: unknown, pageUrl: string): TaxonPage | null {
+  if (!isRecord(value) || typeof value.id !== 'number' || typeof value.name !== 'string') return null
+  const photo = isRecord(value.default_photo) ? value.default_photo : null
+  const photoUrl = typeof photo?.medium_url === 'string' ? photo.medium_url : null
+  const attribution = typeof photo?.attribution === 'string' ? photo.attribution.trim() : ''
+  const license = typeof photo?.license_code === 'string' ? photo.license_code.toUpperCase() : ''
+  const photoCredit = attribution || license || null
+  return {
+    id: value.id,
+    name: value.name,
+    commonName: typeof value.preferred_common_name === 'string' ? value.preferred_common_name : null,
+    rank: typeof value.rank === 'string' ? value.rank : 'taxon',
+    extinct: value.extinct === true,
+    observations: typeof value.observations_count === 'number' ? value.observations_count : 0,
+    summary: plainSummary(typeof value.wikipedia_summary === 'string' ? value.wikipedia_summary : ''),
+    photoUrl,
+    photoCredit,
+    lineage: lineageOf(value.ancestors),
+    pageUrl,
+  }
+}
+
+function pickTaxon(body: unknown, taxon: number | undefined, binomial: string): unknown {
+  const results = isRecord(body) && Array.isArray(body.results) ? body.results : []
+  if (taxon) return results.find((row) => isRecord(row) && row.id === taxon) ?? results[0] ?? null
+  const wanted = binomial.toLowerCase()
+  return results.find((row) => isRecord(row) && typeof row.name === 'string' && row.name.toLowerCase() === wanted) ?? null
+}
+
+function lineageOf(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const names: string[] = []
+  for (const ancestor of value) {
+    if (!isRecord(ancestor) || typeof ancestor.rank !== 'string' || typeof ancestor.name !== 'string') continue
+    if (LINEAGE.has(ancestor.rank)) names.push(ancestor.name)
+  }
+  return names
+}
+
+function plainSummary(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}

@@ -3,7 +3,7 @@ import { buildShell, frame, whorlCount } from './raup.ts'
 import { aperturePose, marksFor, valveHinge } from './anatomy.ts'
 import { NOTES } from './notes.ts'
 import { PATTERNS } from './patterns.ts'
-import { inaturalistUrl } from './inaturalist.ts'
+import { inaturalistUrl, taxonFromApi } from './inaturalist.ts'
 import { SPECIMENS, inBounds } from './specimens.ts'
 import { CUBE, TOLERANCE, fromLocal, isMatch, toLocal } from './space.ts'
 
@@ -146,6 +146,41 @@ describe('morphospace', () => {
       expect(url.startsWith('https://www.inaturalist.org/'), specimen.id).toBe(true)
     }
     expect(inaturalistUrl('dactylioceras', 'Dactylioceras commune')).toContain('Dactylioceras%20commune')
+  })
+
+  it('reads an iNaturalist taxon into the popup record', () => {
+    const page = taxonFromApi(
+      {
+        id: 123467,
+        name: 'Nautilus pompilius',
+        preferred_common_name: 'Emperor Nautilus',
+        rank: 'species',
+        extinct: false,
+        observations_count: 331,
+        wikipedia_summary: 'The <b>chambered nautilus</b> keeps a <i>spiral</i> shell.',
+        default_photo: {
+          medium_url: 'https://static.inaturalist.org/photos/58051104/medium.jpg',
+          attribution: '(c) Ian Shaw',
+          license_code: 'cc-by',
+        },
+        ancestors: [
+          { rank: 'kingdom', name: 'Animalia' },
+          { rank: 'subphylum', name: 'Conchifera' },
+          { rank: 'phylum', name: 'Mollusca' },
+          { rank: 'family', name: 'Nautilidae' },
+        ],
+      },
+      'https://www.inaturalist.org/taxa/123467',
+    )
+    expect(page).toMatchObject({
+      name: 'Nautilus pompilius',
+      commonName: 'Emperor Nautilus',
+      summary: 'The chambered nautilus keeps a spiral shell.',
+      photoCredit: '(c) Ian Shaw',
+      lineage: ['Animalia', 'Mollusca', 'Nautilidae'],
+      pageUrl: 'https://www.inaturalist.org/taxa/123467',
+    })
+    expect(taxonFromApi({ name: 'no id' }, 'https://www.inaturalist.org/taxa/search?q=x')).toBeNull()
   })
 
   it('gives every animal a fact and a few separated parts', () => {
