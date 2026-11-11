@@ -318,7 +318,8 @@ h2 em,
 .how-touch,
 .gesture,
 .sheet-actions,
-.sheet-creature {
+.sheet-creature,
+.panel-creature {
   display: none;
 }
 
@@ -734,9 +735,29 @@ h2 em,
     display: none;
   }
 
-  .sheet-creature {
+  .panel-creature {
     display: block;
-    margin-top: 16px;
+    margin: 0 0 4px;
+  }
+
+  .panel-creature .line {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .panel-creature .fact {
+    display: block;
+    margin-top: 6px;
+    padding-top: 6px;
+    font-size: 13px;
+  }
+
+  .sheet-head .rule {
+    margin: 6px 0 0;
+    max-width: 24em;
+    font-size: 12.5px;
+    line-height: 1.35;
   }
 
   .credit {
@@ -838,7 +859,8 @@ h2 em,
   }
 
   .sheet-head h1,
-  .sheet-head .kicker {
+  .sheet-head .kicker,
+  .sheet-head .rule {
     display: none;
   }
 

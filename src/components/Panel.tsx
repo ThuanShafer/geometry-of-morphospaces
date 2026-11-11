@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import type { RaupParams } from '../model/raup.ts'
 import { TaxonDialog } from './TaxonDialog.tsx'
 import { noteFor } from '../model/notes.ts'
@@ -53,6 +53,7 @@ export function Panel({
             <br />
             is the same shell.
           </h1>
+          <p className="rule">A tube that grows only at its mouth. Three numbers decide the form.</p>
         </div>
         <div className="sheet-actions">
           <button type="button" className="text-button" onClick={onResetView}>
@@ -69,7 +70,18 @@ export function Panel({
         </div>
       </div>
       <aside className={details ? 'panel is-open' : 'panel'}>
-        <p className="rule">A tube that grows only at its mouth. Three numbers decide the form.</p>
+        <div className="panel-creature">
+          {hit ? (
+            <>
+              <p className="line">{hit.line}</p>
+              <Fact id={hit.id} binomial={`${hit.genus} ${hit.species}`} />
+            </>
+          ) : (
+            <p className="line">
+              {near.warmth > 0.28 ? 'A form is near. Trim the residual.' : 'Nothing alive, nothing fossil.'}
+            </p>
+          )}
+        </div>
 
         <div className="params">
           <Parameter
@@ -123,12 +135,6 @@ export function Panel({
         <p className="how how-touch">
           Drag the bright point in the cube. Drag to turn the cube, and pinch to zoom.
         </p>
-        {hit && (
-          <div className="sheet-creature">
-            <p className="line">{hit.line}</p>
-            <Fact id={hit.id} binomial={`${hit.genus} ${hit.species}`} />
-          </div>
-        )}
 
         <p className="eq">
           r(θ) = W<sup>θ/2π</sup>
@@ -252,35 +258,16 @@ export function Panel({
 }
 
 function Fact({ id, binomial }: { id: string; binomial: string }) {
-  const narrow = useNarrowScreen()
   const [open, setOpen] = useState(false)
   return (
     <p className="fact">
-      {noteFor(id).fact}
-      {!narrow && (
-        <>
-          {' '}
-          <button type="button" className="fact-link" onClick={() => setOpen(true)}>
-            Read more
-          </button>
-          {open && <TaxonDialog specimenId={id} binomial={binomial} onClose={() => setOpen(false)} />}
-        </>
-      )}
+      {noteFor(id).fact}{' '}
+      <button type="button" className="fact-link" onClick={() => setOpen(true)}>
+        Read more
+      </button>
+      {open && <TaxonDialog specimenId={id} binomial={binomial} onClose={() => setOpen(false)} />}
     </p>
   )
-}
-
-function useNarrowScreen() {
-  const query = '(max-width: 800px), (max-height: 560px)'
-  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    const apply = () => setNarrow(media.matches)
-    apply()
-    media.addEventListener('change', apply)
-    return () => media.removeEventListener('change', apply)
-  }, [])
-  return narrow
 }
 
 function Parameter({
